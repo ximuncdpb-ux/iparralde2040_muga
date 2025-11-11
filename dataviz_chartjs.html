@@ -20,19 +20,26 @@
     font-weight: 600;
   }
   .select-container {
-    display: flex;
-    justify-content: center;
-    margin: 20px 0;
-  }
-  select {
-    font-size: 1.1em;
-    padding: 10px;
-    border-radius: 8px;
-    border: 2px solid #006EFB;
-    background: #f9f9f9;
-    color: #333;
-    cursor: pointer;
-  }
+  display: flex;
+  justify-content: center;
+  margin: 20px auto;
+  width: 100%;
+  max-width: 800px; /* limite la largeur totale */
+}
+
+select {
+  width: 100%;
+  max-width: 600px; /* taille maximum du menu déroulant */
+  font-size: 1.1em;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 2px solid #006EFB;
+  background: #f9f9f9;
+  color: #333;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
   .responses {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
