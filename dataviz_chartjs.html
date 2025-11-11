@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Réponses ouvertes - Iparralde 2040</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
   body {
     font-family: 'Montserrat', sans-serif;
@@ -34,20 +35,25 @@
   }
   .responses {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 15px;
     margin-top: 20px;
   }
   .card {
-    padding: 15px;
+    padding: 18px;
     border-radius: 12px;
     color: white;
     font-size: 1.1em;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     transition: transform 0.2s ease;
+    line-height: 1.4em;
   }
   .card:hover {
     transform: scale(1.02);
+  }
+  @media (max-width: 600px) {
+    .card { font-size: 1em; padding: 14px; }
+    select { font-size: 1em; }
   }
 </style>
 </head>
@@ -67,56 +73,41 @@
 const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=130136180&single=true&output=csv";
 const colors = ['#FFC200', '#FF86BF', '#FF0000', '#006EFB', '#00AE90', '#FF6900', '#B02FCB'];
 
-async function fetchCSV(url) {
-  const res = await fetch(url);
-  const text = await res.text();
-  return text;
-}
+Papa.parse(sheetUrl, {
+  download: true,
+  header: true,
+  complete: function(results) {
+    const data = results.data;
+    const headers = results.meta.fields;
+    const select = document.getElementById('questionSelect');
+    const container = document.getElementById('responsesContainer');
 
-function parseCSV(text) {
-  const rows = text.split('\n').map(r => r.split(','));
-  const headers = rows[0];
-  const data = rows.slice(1);
-  return { headers, data };
-}
+    // Ajout des questions dans le menu
+    headers.forEach((header, i) => {
+      const opt = document.createElement('option');
+      opt.value = header;
+      opt.textContent = header;
+      select.appendChild(opt);
+    });
 
-function populateQuestions(headers) {
-  const select = document.getElementById('questionSelect');
-  headers.forEach((header, index) => {
-    const opt = document.createElement('option');
-    opt.value = index;
-    opt.textContent = header;
-    select.appendChild(opt);
-  });
-}
+    select.addEventListener('change', () => {
+      const selected = select.value;
+      container.innerHTML = '';
+      if (!selected) return;
 
-function displayResponses(data, questionIndex) {
-  const container = document.getElementById('responsesContainer');
-  container.innerHTML = '';
-  data.forEach(row => {
-    const response = row[questionIndex];
-    if (response && response.trim() !== '') {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-      card.textContent = response;
-      container.appendChild(card);
-    }
-  });
-}
-
-async function init() {
-  const csvText = await fetchCSV(sheetUrl);
-  const { headers, data } = parseCSV(csvText);
-  populateQuestions(headers);
-
-  document.getElementById('questionSelect').addEventListener('change', (e) => {
-    const index = e.target.value;
-    if (index) displayResponses(data, index);
-  });
-}
-
-init();
+      data.forEach(row => {
+        const response = row[selected];
+        if (response && response.trim() !== '') {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+          card.textContent = response.trim();
+          container.appendChild(card);
+        }
+      });
+    });
+  }
+});
 </script>
 
 </body>
