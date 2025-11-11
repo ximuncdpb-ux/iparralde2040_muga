@@ -109,6 +109,19 @@ Papa.parse(sheetUrl, {
   }
 });
 </script>
+<script>
+  // Envoie la hauteur actuelle au parent YesWiki
+  function sendHeight() {
+    const height = document.body.scrollHeight;
+    window.parent.postMessage({ iframeHeight: height }, '*');
+  }
 
+  // Surveille les changements du contenu (utile si tu choisis une autre question)
+  const observer = new MutationObserver(sendHeight);
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // Premier envoi après chargement
+  window.addEventListener('load', sendHeight);
+</script>
 </body>
 </html>
