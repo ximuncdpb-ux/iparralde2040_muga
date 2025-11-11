@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dataviz Iparralde 2040 - Chart.js</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
+    h1 { color: #333; text-align: center; }
+    .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+    select, button { padding: 8px; border-radius: 8px; border: 1px solid #ccc; }
+    canvas { max-width: 1000px; margin: auto; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Dataviz Iparralde 2040 (Chart.js)</h1>
+  <div class="controls">
+    <select id="var1"></select>
+    <select id="var2"></select>
+    <select id="chartType">
+      <option value="bar">Diagramme en barres</option>
+      <option value="pie">Camembert</option>
+      <option value="scatter">Nuage de points</option>
+    </select>
+    <button onclick="updateChart()">Afficher</button>
+  </div>
+  <canvas id="chart"></canvas>
+
+  <script>
+    const urls = [
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=0&single=true&output=csv',
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=770316236&single=true&output=csv',
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=130136180&single=true&output=csv'
+    ];
+    let fullData = [];
+    let chart;
+
+    async function loadAllData() {
+      const datasets = await Promise.all(urls.map(url => new Promise((resolve) => {
+        Papa.parse(url, {
+          download: true,
+          header: true,
+          complete: results => resolve(results.data)
+        });
+      })));
+      const merged = {};
+      datasets.forEach(sheet => {
+        sheet.forEach(row => {
+          const id = row['ID'];
+          if (!id) return;
+          if (!merged[id]) merged[id] = {};
+          Object.assign(merged[id], row);
+        });
+      });
+      fullData = Object.values(merged);
+      populateSelectors();
+    }
+
+    function populateSelectors() {
+      const allCols = Object.keys(fullData[0] || {}).filter(c => c !== 'ID');
+      const var1 = document.getElementById('var1');
+      const var2 = document.getElementById('var2');
+      allCols.forEach(c => {
+        const opt1 = new Option(c, c);
+        const opt2 = new Option(c, c);
+        var1.add(opt1);
+        var2.add(opt2);
+      });
+    }
+
+    function updateChart() {
+      const v1 = document.getElementById('var1').value;
+      const v2 = document.getElementById('var2').value;
+      const chartType = document.getElementById('chartType').value;
+      if (!v1 || !v2) return alert("Choisissez deux variables");
+
+      const counts = {};
+      fullData.forEach(row => {
+        const key = `${row[v1]} | ${row[v2]}`;
+        counts[key] = (counts[key] || 0) + 1;
+      });
+
+      const labels = Object.keys(counts);
+      const data = Object.values(counts);
+      const ctx = document.getElementById('chart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: v1 + " × " + v2,
+            data: data
+          }]
+        }
+      });
+    }
+
+    loadAllData();
+  </script>
+</body>
+</html>
