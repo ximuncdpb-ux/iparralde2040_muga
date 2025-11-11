@@ -1,103 +1,123 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Dataviz Iparralde 2040 - Chart.js</title>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
-    h1 { color: #333; text-align: center; }
-    .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
-    select, button { padding: 8px; border-radius: 8px; border: 1px solid #ccc; }
-    canvas { max-width: 1000px; margin: auto; display: block; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Réponses ouvertes - Iparralde 2040</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #fff;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #006EFB;
+    font-weight: 600;
+  }
+  .select-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+  }
+  select {
+    font-size: 1.1em;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid #006EFB;
+    background: #f9f9f9;
+    color: #333;
+    cursor: pointer;
+  }
+  .responses {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+  }
+  .card {
+    padding: 15px;
+    border-radius: 12px;
+    color: white;
+    font-size: 1.1em;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+  }
+  .card:hover {
+    transform: scale(1.02);
+  }
+</style>
 </head>
 <body>
-  <h1>Dataviz Iparralde 2040 (Chart.js)</h1>
-  <div class="controls">
-    <select id="var1"></select>
-    <select id="var2"></select>
-    <select id="chartType">
-      <option value="bar">Diagramme en barres</option>
-      <option value="pie">Camembert</option>
-      <option value="scatter">Nuage de points</option>
-    </select>
-    <button onclick="updateChart()">Afficher</button>
-  </div>
-  <canvas id="chart"></canvas>
 
-  <script>
-    const urls = [
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=0&single=true&output=csv',
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=770316236&single=true&output=csv',
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=130136180&single=true&output=csv'
-    ];
-    let fullData = [];
-    let chart;
+<h1>Réponses ouvertes - Iparralde 2040</h1>
 
-    async function loadAllData() {
-      const datasets = await Promise.all(urls.map(url => new Promise((resolve) => {
-        Papa.parse(url, {
-          download: true,
-          header: true,
-          complete: results => resolve(results.data)
-        });
-      })));
-      const merged = {};
-      datasets.forEach(sheet => {
-        sheet.forEach(row => {
-          const id = row['ID'];
-          if (!id) return;
-          if (!merged[id]) merged[id] = {};
-          Object.assign(merged[id], row);
-        });
-      });
-      fullData = Object.values(merged);
-      populateSelectors();
+<div class="select-container">
+  <select id="questionSelect">
+    <option value="">Choisissez une question...</option>
+  </select>
+</div>
+
+<div id="responsesContainer" class="responses"></div>
+
+<script>
+const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqxXiN5EwusAFIlXvMVjLCoISTnkM2bkbu1lcjo7-XYDcQSHBJw-ONedVBqwTNBNOZLPqefEIldM5N/pub?gid=130136180&single=true&output=csv";
+const colors = ['#FFC200', '#FF86BF', '#FF0000', '#006EFB', '#00AE90', '#FF6900', '#B02FCB'];
+
+async function fetchCSV(url) {
+  const res = await fetch(url);
+  const text = await res.text();
+  return text;
+}
+
+function parseCSV(text) {
+  const rows = text.split('\n').map(r => r.split(','));
+  const headers = rows[0];
+  const data = rows.slice(1);
+  return { headers, data };
+}
+
+function populateQuestions(headers) {
+  const select = document.getElementById('questionSelect');
+  headers.forEach((header, index) => {
+    const opt = document.createElement('option');
+    opt.value = index;
+    opt.textContent = header;
+    select.appendChild(opt);
+  });
+}
+
+function displayResponses(data, questionIndex) {
+  const container = document.getElementById('responsesContainer');
+  container.innerHTML = '';
+  data.forEach(row => {
+    const response = row[questionIndex];
+    if (response && response.trim() !== '') {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      card.textContent = response;
+      container.appendChild(card);
     }
+  });
+}
 
-    function populateSelectors() {
-      const allCols = Object.keys(fullData[0] || {}).filter(c => c !== 'ID');
-      const var1 = document.getElementById('var1');
-      const var2 = document.getElementById('var2');
-      allCols.forEach(c => {
-        const opt1 = new Option(c, c);
-        const opt2 = new Option(c, c);
-        var1.add(opt1);
-        var2.add(opt2);
-      });
-    }
+async function init() {
+  const csvText = await fetchCSV(sheetUrl);
+  const { headers, data } = parseCSV(csvText);
+  populateQuestions(headers);
 
-    function updateChart() {
-      const v1 = document.getElementById('var1').value;
-      const v2 = document.getElementById('var2').value;
-      const chartType = document.getElementById('chartType').value;
-      if (!v1 || !v2) return alert("Choisissez deux variables");
+  document.getElementById('questionSelect').addEventListener('change', (e) => {
+    const index = e.target.value;
+    if (index) displayResponses(data, index);
+  });
+}
 
-      const counts = {};
-      fullData.forEach(row => {
-        const key = `${row[v1]} | ${row[v2]}`;
-        counts[key] = (counts[key] || 0) + 1;
-      });
+init();
+</script>
 
-      const labels = Object.keys(counts);
-      const data = Object.values(counts);
-      const ctx = document.getElementById('chart').getContext('2d');
-      if (chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type: chartType,
-        data: {
-          labels: labels,
-          datasets: [{
-            label: v1 + " × " + v2,
-            data: data
-          }]
-        }
-      });
-    }
-
-    loadAllData();
-  </script>
 </body>
 </html>
